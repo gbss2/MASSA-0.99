@@ -38,20 +38,20 @@ public class DBsnpAgent extends DBagent {
    	 	this.setInformation("snp");
    	 	this.snpdata = new BioData("snp");
 	}
-	
+
 	/* Agent setup */
 	protected void setup() {
 		System.out.println("Agent " + getLocalName() + " started.");
 		this.register();
 		addBehaviour(new waitRequest());
 	}
-	
+
 	/* Agent shutdown */
-	
-	
-	
+
+
+
 	/* BEHAVIOURS */
-	
+
 	/* Agent communication: wait for messages */
 	class waitRequest extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -62,7 +62,7 @@ public class DBsnpAgent extends DBagent {
 		public waitRequest() {
 			 MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
 		}
-		
+
 		public void action() {
 			ACLMessage msg = myAgent.receive(simplerequest_template);
 			if (msg != null) {
@@ -75,7 +75,7 @@ public class DBsnpAgent extends DBagent {
 				} catch (UnreadableException e) { e.printStackTrace(); }
 			} else { block(); }
 		}
-	} 
+	}
 
 	/* Agent action: access DB -> access DB remote; send reply  */
 	class dbSNPAction extends FSMBehaviour {
@@ -83,26 +83,26 @@ public class DBsnpAgent extends DBagent {
 
 		private static final String STATE_A = "A";
 		private static final String STATE_B = "B";
-		
+
 		public AID partneragent;
 		public int[] snpidlist;
-		
+
 		public dbSNPAction(int[] sl, AID pa){
 			partneragent = pa;
 			snpidlist = sl;
-			
+
 			System.out.println("Agent " + getLocalName() +" executing request...");
 			this.registerFirstState(new accessDBsnpEutils(snpidlist), STATE_A);
 			this.registerLastState(new SendReply(partneragent), STATE_B);
 			this.registerDefaultTransition(STATE_A,STATE_B);
 		}
-		
+
 		public int onEnd() {
 			System.out.println("Agent " + getLocalName() +" finished task.");
 			return super.onEnd();
 		}
 	}
-	
+
 	/* Agent reply: send message to Coordinator on task end */
 	class SendReply extends OneShotBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -116,7 +116,7 @@ public class DBsnpAgent extends DBagent {
 			msgperformative = "INFORM";
 			snpdata.setSearchid(getAnnsearchid());
 		}
-		
+
 		public void action() {
 			System.out.println("... sending "+msgperformative+" to agent: \""+msgreceiver.getName());
 			msg = new ACLMessage(ACLMessage.INFORM);
@@ -129,8 +129,8 @@ public class DBsnpAgent extends DBagent {
 			myAgent.send(msg);
 		}
 	}
-	
-	/* Agent action: parallel access to DB -> remote Access DB  */	
+
+	/* Agent action: parallel access to DB -> remote Access DB  */
 	class accessDBsnpEutils extends ParallelBehaviour {
 		private static final long serialVersionUID = 1L;
 
@@ -140,21 +140,21 @@ public class DBsnpAgent extends DBagent {
 			super(WHEN_ALL);
 			this.snpidlist = sl;
 		}
-		
+
 		public void onStart(){
 			System.out.println("Threads ativas:"+Thread.getAllStackTraces().size());
-			
+
 			for (int i = 0; i < snpidlist.length; i++) {
 				this.addSubBehaviour(new remoteAccessDBsnpEutils(snpidlist[i]));
 			}
 		}
-		
+
 		public int onEnd(){
 			System.out.println("Agent " + getLocalName() +" finished.");
 			return super.onEnd();
 		}
-	}		
-	
+	}
+
 	/* Agent action: Query DB  */
 	class remoteAccessDBsnpEutils extends OneShotBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -178,7 +178,7 @@ public class DBsnpAgent extends DBagent {
 					urlfilter.polTable[x] = "null";
 				}
 			}
-			
+
 			snpresult.setPolymorphismCode(Integer.toString(snpid));
 			snpresult.setKind(urlfilter.polTable[1]);
 			snpresult.setSubKind(urlfilter.polTable[2]);
@@ -197,7 +197,7 @@ public class DBsnpAgent extends DBagent {
 			snpresult.setMrnaVer(urlfilter.polTable[18]);
 			snpresult.setFreq(urlfilter.polTable[19]);
 			snpresult.setReferenceAllele(urlfilter.polTable[20]);
-			
+
 			if(urlfilter.polTable[12] != "NA"){
 				snpresult.setGenesymbol(urlfilter.polTable[13]);
 				snpresult.setGeneid(urlfilter.polTable[12]);
@@ -205,7 +205,7 @@ public class DBsnpAgent extends DBagent {
 				snpresult.setGenesymbol("null");
 				snpresult.setGeneid("null");
 			}
-			
+
 			synchronized(snpdata){
 				snpdata.setPolymorphismList(snpresult);
 			}
@@ -220,16 +220,16 @@ public class DBsnpAgent extends DBagent {
 		int id;
 		String[] polTable;
 		int firstRes = 0;
-		
+
 		public UrlFilter(int id){
 			polTable = new String[21];
 			setId(id);
 		}
-		
+
 		public int getPolTableSize(){
 			return polTable.length;
 		}
-		
+
 		public void readFLT() {
 			try {
 				URL url = new URL(makeURL(id, "FLT"));
@@ -243,41 +243,41 @@ public class DBsnpAgent extends DBagent {
 						String alleles = null;
 						int inicio = 0;
 						int fim = 0;
-						
+
 						inicio = line.indexOf("alleles=") + 8;
 						alleles = line.substring(inicio);
 						fim = alleles.indexOf(" | ");
 						alleles = alleles.substring(0, fim);
-						
+
 						polTable[3] = alleles;
 					} else if (line.startsWith("CTG")) {
 						if(firstRes==0){
 							String[] aux = new String[17];
 							aux = line.split(" | ");
-		
+
 							String assembly = aux[2];
 							String chr = aux[4];
 							String chr_pos = aux[6];
 							String ctg_start = aux[10];
-		
+
 							int pos;
-		
+
 							pos = assembly.indexOf('=');
 							assembly = assembly.substring(pos + 1);
-		
+
 							polTable[7] = assembly;
-		
+
 							pos = chr.indexOf('=');
 							chr = chr.substring(pos + 1);
-		
+
 							polTable[5] = chr;
-		
+
 							pos = chr_pos.indexOf('=');
 							chr_pos = chr_pos.substring(pos + 1);
-							
+
 							pos = ctg_start.indexOf('=');
 							ctg_start = ctg_start.substring(pos + 1);
-							
+
 							polTable[6] = chr_pos;
 							polTable[8] = ctg_start;
 							polTable[9] = ctg_start;
@@ -290,7 +290,7 @@ public class DBsnpAgent extends DBagent {
 						String gene_name = aux[2];
 						String locus_id = aux[4];
 						String fxn_class = aux[6];
-						
+
 						int pos;
 
 						pos = locus_id.indexOf('=');
@@ -302,7 +302,7 @@ public class DBsnpAgent extends DBagent {
 						fxn_class = fxn_class.substring(pos + 1);
 
 						polTable[2] = fxn_class;
-						
+
 						polTable[13] = gene_name;
 					}
 				} while (reader.ready());
@@ -325,7 +325,7 @@ public class DBsnpAgent extends DBagent {
 			Element ComponentTag;
 			Element MapLocTag;
 			Element FxnSetTag;
-			
+
 			try {
 				docBuilder = dbf.newDocumentBuilder();
 				URL url = new URL(makeURL(id, "XML"));
@@ -348,18 +348,18 @@ public class DBsnpAgent extends DBagent {
 				}
 				while(coord_relative_gene!=null && !coord_relative_gene.startsWith("NM_"));
 				coord_relative_gene = process_coord_relative_gene(coord_relative_gene);
-				
+
 				try{
 					polTable[1] = rsTag.getAttribute("snpClass");
 				} catch(Exception e){ polTable[1] = null; }
-				
+
 				polTable[4] = coord_relative_gene;
-				
+
 				try{
 					Element hetTag = (Element) rsTag.getElementsByTagName("Het").item(0);
 					polTable[14] = hetTag.getAttribute("value");
 				} catch(Exception e){ polTable[14] = null; }
-				
+
 				try{
 					Element SequenceTag = (Element) rsTag.getElementsByTagName("Sequence").item(0);
 					polTable[15] = SequenceTag.getAttribute("ancestralAllele");
@@ -367,14 +367,14 @@ public class DBsnpAgent extends DBagent {
 						polTable[15] = null;
 					}
 				} catch(Exception e){ polTable[15] = null; }
-				
+
 				try{
 					AssemblyTag = (Element) rsTag.getElementsByTagName("Assembly").item(0);
 					ComponentTag = (Element) AssemblyTag.getElementsByTagName("Component").item(0);
-					
-					polTable[16] = ComponentTag.getAttribute("orientation");	
+
+					polTable[16] = ComponentTag.getAttribute("orientation");
 				} catch(Exception e){ polTable[16] = null; }
-				
+
 				try{
 					AssemblyTag = (Element) rsTag.getElementsByTagName("Assembly").item(0);
 					ComponentTag = (Element) AssemblyTag.getElementsByTagName("Component").item(0);
@@ -383,21 +383,21 @@ public class DBsnpAgent extends DBagent {
 
 					polTable[17] = FxnSetTag.getAttribute("mrnaAcc");
 				} catch (Exception e) { polTable[17] = null; }
-				
+
 				try{
 					AssemblyTag = (Element) rsTag.getElementsByTagName("Assembly").item(0);
 					ComponentTag = (Element) AssemblyTag.getElementsByTagName("Component").item(0);
 					MapLocTag = (Element) ComponentTag.getElementsByTagName("MapLoc").item(0);
 					FxnSetTag = (Element) MapLocTag.getElementsByTagName("FxnSet").item(0);
-					
+
 					polTable[18] = FxnSetTag.getAttribute("mrnaVer");
 				} catch (Exception e) { polTable[18] = null; }
-				
+
 				try{
 					Element FrequencyTag = (Element) rsTag.getElementsByTagName("Frequency").item(0);
 					polTable[19] = FrequencyTag.getAttribute("freq");
 				} catch (Exception e) { polTable[19] = null; }
-				
+
 				try{
 					Element FrequencyTag = (Element) rsTag.getElementsByTagName("Frequency").item(0);
 					polTable[20] = FrequencyTag.getAttribute("allele");
@@ -419,10 +419,10 @@ public class DBsnpAgent extends DBagent {
 				e.printStackTrace();
 			}
 		}
-		
-		
+
+
 		/* GENERIC FUNCTIONS */
-		
+
 		/* PROCESS GENE COORDINATES */
 		public String process_coord_relative_gene(String coord_relative_gene){
 			if(coord_relative_gene!=null){
@@ -441,9 +441,8 @@ public class DBsnpAgent extends DBagent {
 
 		/* CREATE QUERY URL */
 		public String makeURL(int id, String report) {
-			return 
-			"http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=snp&id=" + id + "&report=" + report;
+			return
+			"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?&api_key=90fb75658006ccef43503929a8d6a1a24c08&db=snp&id=" + id + "&report=" + report;
 		}
 	}
 }
-

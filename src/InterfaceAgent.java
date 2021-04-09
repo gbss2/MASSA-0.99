@@ -27,9 +27,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -114,8 +116,11 @@ public class InterfaceAgent extends Agent{
 	/* Agent setup */
     protected void setup() {
         System.out.println("Agent "+getLocalName()+" started.");
-		start = System.currentTimeMillis();
-		System.out.println("Hello! MAS DiverEnrich is starting at "+start+" ..........");
+		long start = System.currentTimeMillis();
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd G 'at' HH:mm:ss z");    
+		Date startdate = new Date(start);
+		
+		System.out.println("Hello! MASSA is starting at "+sdf.format(startdate)+" ..........");
         this.register();
         myconnection = new MySQLcon(sn, dbname, dbUser, dbKey);
         addBehaviour(new GetInputAction());
